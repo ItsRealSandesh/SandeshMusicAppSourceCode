@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="utf-8"?>
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:aapt="http://schemas.android.com/aapt"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+    <group
+        android:pivotX="54"
+        android:pivotY="54"
+        android:scaleX="0.85"
+        android:scaleY="0.85">
+        <!-- Modern Double Note with Soundwaves icon in safe zone (30 to 78) -->
+        <!-- Glowing gradient note -->
+        <path android:pathData="M46,32 L68,26 C70.2,25.4 72,27 72,29.3 L72,56.5 C69.8,55.5 67.2,55 64.5,55 C58.7,55 54,58.8 54,63.5 C54,68.2 58.7,72 64.5,72 C70.3,72 75,68.2 75,63.5 L75,37 L50,43.5 L50,62.5 C47.8,61.5 45.2,61 42.5,61 C36.7,61 32,64.8 32,69.5 C32,74.2 36.7,78 42.5,78 C48.3,78 53,74.2 53,69.5 L53,35 C53,33.3 51.5,32.2 46,32 Z">
+            <aapt:attr name="android:fillColor">
+                <gradient
+                    android:startX="32"
+                    android:startY="25"
+                    android:endX="75"
+                    android:endY="78"
+                    android:type="linear">
+                    <item android:offset="0.0" android:color="#FFFF7043" />
+                    <item android:offset="0.5" android:color="#FFFF4081" />
+                    <item android:offset="1.0" android:color="#FF7C4DFF" />
+                </gradient>
+            </aapt:attr>
+        </path>
+    </group>
+</vector>

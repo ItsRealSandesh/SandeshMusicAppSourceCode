@@ -1,0 +1,10 @@
+[
+  {
+    "id": "1",
+    "title": "Song 1",
+    "artist": "Sandesh Music",
+    "album": "Single",
+    "audioUrl": "https://raw.githubusercontent.com/ItsRealSandesh/SandeshMusic/main/music/song1.mp3",
+    "coverUrl": "https://raw.githubusercontent.com/ItsRealSandesh/SandeshMusic/main/covers/song1.jpg"
+  }
+]

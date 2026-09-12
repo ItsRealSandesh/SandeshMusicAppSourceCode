@@ -1,0 +1,6 @@
+{
+  "name": "Sandesh Music",
+  "description": "Stream music directly from GitHub using ExoPlayer with background playback and custom controls.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

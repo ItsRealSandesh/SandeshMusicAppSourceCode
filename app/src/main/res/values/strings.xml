@@ -1,0 +1,5 @@
+<resources>
+    <string name="app_name">Sandesh Music</string>
+    <string name="playback_channel_name">Music Playback</string>
+    <string name="playback_channel_description">Controls and notifications for Sandesh Music background playback</string>
+</resources>
