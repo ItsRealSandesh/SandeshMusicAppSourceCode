@@ -47,6 +47,12 @@ class MusicViewModel(
     val downloadedSongs: StateFlow<List<Song>> = repository.downloadedSongsFlow
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
 
+    val userAudioSongs: StateFlow<List<Song>> = repository.userAudioSongsFlow
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
+
+    val totalUserAudioBytes: StateFlow<Long> = repository.totalUserAudioBytesFlow
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), 0L)
+
     val downloadingIds: StateFlow<Set<String>> = repository.downloadingIds
 
     val totalDownloadedBytes: StateFlow<Long> = repository.totalDownloadedBytesFlow
@@ -120,6 +126,25 @@ class MusicViewModel(
     fun deleteDownload(songId: String) {
         viewModelScope.launch {
             repository.deleteDownload(songId)
+        }
+    }
+
+    fun importUserAudio(
+        uri: android.net.Uri,
+        customTitle: String? = null,
+        customArtist: String? = null,
+        onResult: (Result<Song>) -> Unit = {}
+    ) {
+        viewModelScope.launch {
+            val result = repository.importUserAudio(uri, customTitle, customArtist)
+            onResult(result)
+        }
+    }
+
+    fun deleteUserAudio(songId: String, onComplete: () -> Unit = {}) {
+        viewModelScope.launch {
+            repository.deleteUserAudio(songId)
+            onComplete()
         }
     }
 

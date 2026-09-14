@@ -8,6 +8,7 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
@@ -20,13 +21,17 @@ import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.BrightnessAuto
 import androidx.compose.material.icons.filled.CheckCircle
+import androidx.compose.material.icons.filled.DarkMode
 import androidx.compose.material.icons.filled.Email
 import androidx.compose.material.icons.filled.ErrorOutline
+import androidx.compose.material.icons.filled.LightMode
 import androidx.compose.material.icons.filled.Lock
 import androidx.compose.material.icons.filled.Logout
 import androidx.compose.material.icons.filled.MusicNote
 import androidx.compose.material.icons.filled.OpenInNew
+import androidx.compose.material.icons.filled.Palette
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.SupportAgent
 import androidx.compose.material.icons.filled.Visibility
@@ -36,6 +41,7 @@ import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FilledTonalButton
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -62,8 +68,11 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.platform.testTag
+import coil.compose.AsyncImage
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardType
@@ -72,6 +81,7 @@ import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.sandeshmusic.app.data.auth.AuthUser
+import com.sandeshmusic.app.data.preferences.ThemeMode
 import com.sandeshmusic.app.ui.theme.CoralPrimary
 import com.sandeshmusic.app.viewmodel.AuthViewModel
 
@@ -79,6 +89,8 @@ import com.sandeshmusic.app.viewmodel.AuthViewModel
 @Composable
 fun AuthBottomSheet(
     authViewModel: AuthViewModel,
+    themeMode: ThemeMode = ThemeMode.DARK,
+    onThemeToggleClick: () -> Unit = {},
     onDismiss: () -> Unit,
     onDeveloperSupportClick: () -> Unit = {},
     sheetState: SheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
@@ -93,6 +105,7 @@ fun AuthBottomSheet(
 
     var passwordVisible by remember { mutableStateOf(false) }
     val focusManager = LocalFocusManager.current
+    val context = LocalContext.current
 
     ModalBottomSheet(
         onDismissRequest = onDismiss,
@@ -112,9 +125,11 @@ fun AuthBottomSheet(
                 // User Profile & Email Verification View
                 SignedInContent(
                     user = currentUser!!,
+                    themeMode = themeMode,
                     errorMessage = errorMessage,
                     successMessage = successMessage,
                     isLoading = isLoading,
+                    onThemeToggleClick = onThemeToggleClick,
                     onSendVerification = { authViewModel.sendVerificationEmail() },
                     onReloadUser = { authViewModel.reloadUser() },
                     onDeveloperSupportClick = onDeveloperSupportClick,
@@ -137,6 +152,10 @@ fun AuthBottomSheet(
                     onTogglePasswordVisibility = { passwordVisible = !passwordVisible },
                     onTabSelected = { isSignUp -> authViewModel.setSignUpMode(isSignUp) },
                     onDeveloperSupportClick = onDeveloperSupportClick,
+                    onGoogleSignIn = {
+                        focusManager.clearFocus()
+                        authViewModel.signInWithGoogle(context)
+                    },
                     onSubmit = {
                         focusManager.clearFocus()
                         authViewModel.authenticate()
@@ -154,9 +173,11 @@ fun AuthBottomSheet(
 @Composable
 private fun SignedInContent(
     user: AuthUser,
+    themeMode: ThemeMode,
     errorMessage: String?,
     successMessage: String?,
     isLoading: Boolean,
+    onThemeToggleClick: () -> Unit,
     onSendVerification: () -> Unit,
     onReloadUser: () -> Unit,
     onDeveloperSupportClick: () -> Unit,
@@ -169,7 +190,7 @@ private fun SignedInContent(
         }
     }
 
-    val initialLetter = user.email.firstOrNull()?.uppercaseChar()?.toString() ?: "U"
+    val initialLetter = (user.displayName?.firstOrNull() ?: user.email.firstOrNull())?.uppercaseChar()?.toString() ?: "U"
 
     Spacer(modifier = Modifier.height(8.dp))
 
@@ -178,29 +199,40 @@ private fun SignedInContent(
         color = CoralPrimary,
         modifier = Modifier.size(72.dp)
     ) {
-        Box(contentAlignment = Alignment.Center) {
-            Text(
-                text = initialLetter,
-                style = MaterialTheme.typography.headlineMedium,
-                fontWeight = FontWeight.Bold,
-                color = Color.White
+        if (!user.photoUrl.isNullOrBlank()) {
+            AsyncImage(
+                model = user.photoUrl,
+                contentDescription = "User Avatar",
+                modifier = Modifier
+                    .fillMaxSize()
+                    .clip(CircleShape),
+                contentScale = ContentScale.Crop
             )
+        } else {
+            Box(contentAlignment = Alignment.Center) {
+                Text(
+                    text = initialLetter,
+                    style = MaterialTheme.typography.headlineMedium,
+                    fontWeight = FontWeight.Bold,
+                    color = Color.White
+                )
+            }
         }
     }
 
     Spacer(modifier = Modifier.height(12.dp))
 
     Text(
-        text = "Account",
-        style = MaterialTheme.typography.labelMedium,
-        color = MaterialTheme.colorScheme.onSurfaceVariant
+        text = if (!user.displayName.isNullOrBlank()) user.displayName else "Signed In",
+        style = MaterialTheme.typography.titleLarge,
+        fontWeight = FontWeight.Bold,
+        color = MaterialTheme.colorScheme.onSurface
     )
 
     Text(
         text = user.email,
-        style = MaterialTheme.typography.titleLarge,
-        fontWeight = FontWeight.Bold,
-        color = MaterialTheme.colorScheme.onSurface
+        style = MaterialTheme.typography.bodyMedium,
+        color = MaterialTheme.colorScheme.onSurfaceVariant
     )
 
     Spacer(modifier = Modifier.height(16.dp))
@@ -349,6 +381,82 @@ private fun SignedInContent(
 
     Spacer(modifier = Modifier.height(14.dp))
 
+    // Theme Mode Setting Card
+    Surface(
+        shape = RoundedCornerShape(16.dp),
+        color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f),
+        modifier = Modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(16.dp))
+            .clickable(onClick = onThemeToggleClick)
+            .testTag("auth_sheet_theme_toggle_card")
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(16.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.SpaceBetween
+        ) {
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                modifier = Modifier.weight(1f)
+            ) {
+                Surface(
+                    shape = CircleShape,
+                    color = CoralPrimary.copy(alpha = 0.15f),
+                    modifier = Modifier.size(36.dp)
+                ) {
+                    Box(contentAlignment = Alignment.Center) {
+                        Icon(
+                            imageVector = when (themeMode) {
+                                ThemeMode.LIGHT -> Icons.Default.LightMode
+                                ThemeMode.DARK -> Icons.Default.DarkMode
+                                ThemeMode.SYSTEM -> Icons.Default.BrightnessAuto
+                            },
+                            contentDescription = null,
+                            tint = CoralPrimary,
+                            modifier = Modifier.size(20.dp)
+                        )
+                    }
+                }
+                Spacer(modifier = Modifier.width(12.dp))
+                Column {
+                    Text(
+                        text = "App Theme",
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.Bold,
+                        color = MaterialTheme.colorScheme.onSurface
+                    )
+                    Text(
+                        text = when (themeMode) {
+                            ThemeMode.LIGHT -> "Light Theme"
+                            ThemeMode.DARK -> "Dark Theme"
+                            ThemeMode.SYSTEM -> "Follow System Setting"
+                        },
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+            }
+            Surface(
+                shape = RoundedCornerShape(8.dp),
+                color = CoralPrimary.copy(alpha = 0.15f),
+                modifier = Modifier.padding(start = 8.dp)
+            ) {
+                Text(
+                    text = "Change",
+                    style = MaterialTheme.typography.labelMedium,
+                    color = CoralPrimary,
+                    fontWeight = FontWeight.SemiBold,
+                    modifier = Modifier.padding(horizontal = 10.dp, vertical = 5.dp)
+                )
+            }
+        }
+    }
+
+    Spacer(modifier = Modifier.height(14.dp))
+
     // Developer Support & Updates Card
     Surface(
         shape = RoundedCornerShape(16.dp),
@@ -443,6 +551,7 @@ private fun SignedOutContent(
     onTogglePasswordVisibility: () -> Unit,
     onTabSelected: (Boolean) -> Unit,
     onDeveloperSupportClick: () -> Unit = {},
+    onGoogleSignIn: () -> Unit,
     onSubmit: () -> Unit,
     onForgotPassword: () -> Unit
 ) {
@@ -480,6 +589,96 @@ private fun SignedOutContent(
         modifier = Modifier.padding(horizontal = 8.dp),
         lineHeight = 20.sp
     )
+
+    Spacer(modifier = Modifier.height(18.dp))
+
+    // Google Sign-In Button
+    GoogleSignInButton(
+        onClick = onGoogleSignIn,
+        isLoading = isLoading,
+        text = "Continue with Google"
+    )
+
+    // Error message display
+    AnimatedVisibility(visible = errorMessage != null) {
+        Surface(
+            shape = RoundedCornerShape(8.dp),
+            color = MaterialTheme.colorScheme.errorContainer,
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(top = 12.dp)
+        ) {
+            Row(
+                modifier = Modifier.padding(12.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Icon(
+                    imageVector = Icons.Default.ErrorOutline,
+                    contentDescription = null,
+                    tint = MaterialTheme.colorScheme.error
+                )
+                Spacer(modifier = Modifier.width(8.dp))
+                Text(
+                    text = errorMessage ?: "",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onErrorContainer
+                )
+            }
+        }
+    }
+
+    // Success message display
+    AnimatedVisibility(visible = successMessage != null) {
+        Surface(
+            shape = RoundedCornerShape(8.dp),
+            color = Color(0xFF2E7D32).copy(alpha = 0.15f),
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(top = 12.dp)
+        ) {
+            Row(
+                modifier = Modifier.padding(12.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Icon(
+                    imageVector = Icons.Default.CheckCircle,
+                    contentDescription = null,
+                    tint = Color(0xFF2E7D32)
+                )
+                Spacer(modifier = Modifier.width(8.dp))
+                Text(
+                    text = successMessage ?: "",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurface
+                )
+            }
+        }
+    }
+
+    Spacer(modifier = Modifier.height(16.dp))
+
+    // Divider: "or with email"
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 4.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        HorizontalDivider(
+            modifier = Modifier.weight(1f),
+            color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.6f)
+        )
+        Text(
+            text = "or with email",
+            style = MaterialTheme.typography.labelMedium,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            modifier = Modifier.padding(horizontal = 10.dp)
+        )
+        HorizontalDivider(
+            modifier = Modifier.weight(1f),
+            color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.6f)
+        )
+    }
 
     Spacer(modifier = Modifier.height(16.dp))
 
@@ -522,62 +721,6 @@ private fun SignedOutContent(
     }
 
     Spacer(modifier = Modifier.height(16.dp))
-
-    // Error message display
-    AnimatedVisibility(visible = errorMessage != null) {
-        Surface(
-            shape = RoundedCornerShape(8.dp),
-            color = MaterialTheme.colorScheme.errorContainer,
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(bottom = 12.dp)
-        ) {
-            Row(
-                modifier = Modifier.padding(12.dp),
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Icon(
-                    imageVector = Icons.Default.ErrorOutline,
-                    contentDescription = null,
-                    tint = MaterialTheme.colorScheme.error
-                )
-                Spacer(modifier = Modifier.width(8.dp))
-                Text(
-                    text = errorMessage ?: "",
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onErrorContainer
-                )
-            }
-        }
-    }
-
-    // Success message display
-    AnimatedVisibility(visible = successMessage != null) {
-        Surface(
-            shape = RoundedCornerShape(8.dp),
-            color = Color(0xFF2E7D32).copy(alpha = 0.15f),
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(bottom = 12.dp)
-        ) {
-            Row(
-                modifier = Modifier.padding(12.dp),
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Icon(
-                    imageVector = Icons.Default.CheckCircle,
-                    contentDescription = null,
-                    tint = Color(0xFF2E7D32)
-                )
-                Spacer(modifier = Modifier.width(8.dp))
-                Text(
-                    text = successMessage ?: "",
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurface
-                )
-            }
-        }
-    }
 
     // Email input
     OutlinedTextField(

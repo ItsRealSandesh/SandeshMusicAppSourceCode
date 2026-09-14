@@ -17,7 +17,7 @@ class MusicApiImpl(private val okHttpClient: OkHttpClient) : MusicApi {
 
     companion object {
         const val SONGS_JSON_URL =
-            "https://raw.githubusercontent.com/ItsRealSandesh/SandeshMusic/main/songs.json"
+            "https://song.codewithsandesh.com/songs.json"
     }
 
     private val jsonParser = Json {
@@ -35,7 +35,7 @@ class MusicApiImpl(private val okHttpClient: OkHttpClient) : MusicApi {
         val response = try {
             okHttpClient.newCall(request).execute()
         } catch (e: Exception) {
-            throw IOException("Unable to reach GitHub: ${e.localizedMessage ?: "Network error"}", e)
+            throw IOException("Unable to fetch songs: ${e.localizedMessage ?: "Network error"}", e)
         }
 
         response.use { resp ->

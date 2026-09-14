@@ -81,4 +81,20 @@ interface SongDao {
 
     @Query("SELECT COALESCE(SUM(fileSize), 0) FROM downloaded_songs")
     fun getTotalDownloadedBytesFlow(): Flow<Long>
+
+    // User Imported Audio Tracks
+    @Query("SELECT * FROM user_audio_tracks ORDER BY addedAt DESC")
+    fun getUserAudioTracksFlow(): Flow<List<UserAudioEntity>>
+
+    @Query("SELECT * FROM user_audio_tracks WHERE id = :id LIMIT 1")
+    suspend fun getUserAudioTrack(id: String): UserAudioEntity?
+
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun insertUserAudioTrack(track: UserAudioEntity)
+
+    @Query("DELETE FROM user_audio_tracks WHERE id = :id")
+    suspend fun deleteUserAudioTrack(id: String)
+
+    @Query("SELECT COALESCE(SUM(fileSize), 0) FROM user_audio_tracks")
+    fun getTotalUserAudioBytesFlow(): Flow<Long>
 }

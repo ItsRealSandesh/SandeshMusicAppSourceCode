@@ -12,6 +12,8 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.aspectRatio
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
@@ -65,10 +67,11 @@ fun SongRowItem(
             .testTag("song_row_${song.id}"),
         verticalAlignment = Alignment.CenterVertically
     ) {
-        // Cover Art
+        // Cover Art (16:9 widescreen ratio matching song cover assets)
         Box(
             modifier = Modifier
-                .size(54.dp)
+                .width(68.dp)
+                .aspectRatio(16f / 9f)
                 .clip(RoundedCornerShape(8.dp))
                 .background(MaterialTheme.colorScheme.surfaceVariant)
         ) {
@@ -80,7 +83,7 @@ fun SongRowItem(
                     .placeholder(R.drawable.ic_default_cover)
                     .build(),
                 contentDescription = "${song.title} artwork",
-                modifier = Modifier.size(54.dp),
+                modifier = Modifier.fillMaxSize(),
                 contentScale = ContentScale.Crop
             )
 
@@ -162,7 +165,7 @@ fun SongCardHorizontal(
 
     Card(
         modifier = modifier
-            .width(145.dp)
+            .width(165.dp)
             .clip(RoundedCornerShape(14.dp))
             .clickable(onClick = onClick)
             .testTag("song_card_${song.id}"),
@@ -174,7 +177,8 @@ fun SongCardHorizontal(
         Column(modifier = Modifier.padding(10.dp)) {
             Box(
                 modifier = Modifier
-                    .size(125.dp)
+                    .fillMaxWidth()
+                    .aspectRatio(16f / 9f)
                     .clip(RoundedCornerShape(10.dp))
                     .background(MaterialTheme.colorScheme.surface)
             ) {
@@ -186,7 +190,7 @@ fun SongCardHorizontal(
                         .placeholder(R.drawable.ic_default_cover)
                         .build(),
                     contentDescription = "${song.title} artwork",
-                    modifier = Modifier.size(125.dp),
+                    modifier = Modifier.fillMaxSize(),
                     contentScale = ContentScale.Crop
                 )
 

@@ -5,6 +5,8 @@ import com.google.firebase.auth.FirebaseAuthException
 import com.google.firebase.auth.FirebaseAuthInvalidCredentialsException
 import com.google.firebase.auth.FirebaseAuthUserCollisionException
 import com.google.firebase.auth.FirebaseAuthWeakPasswordException
+import com.google.firebase.auth.FirebaseUser
+import com.google.firebase.auth.GoogleAuthProvider
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -26,25 +28,11 @@ class AuthRepository(
     init {
         // Listen to Auth state and IdToken changes from Firebase
         val authListener = FirebaseAuth.AuthStateListener { auth ->
-            val user = auth.currentUser?.let {
-                AuthUser(
-                    uid = it.uid,
-                    email = it.email ?: "User",
-                    displayName = it.displayName,
-                    isEmailVerified = it.isEmailVerified
-                )
-            }
+            val user = auth.currentUser?.toAuthUser()
             _currentUserFlow.value = user
         }
         val idTokenListener = FirebaseAuth.IdTokenListener { auth ->
-            val user = auth.currentUser?.let {
-                AuthUser(
-                    uid = it.uid,
-                    email = it.email ?: "User",
-                    displayName = it.displayName,
-                    isEmailVerified = it.isEmailVerified
-                )
-            }
+            val user = auth.currentUser?.toAuthUser()
             _currentUserFlow.value = user
         }
         firebaseAuth.addAuthStateListener(authListener)
@@ -54,6 +42,16 @@ class AuthRepository(
         scope.launch {
             refreshUserState(forceReload = true)
         }
+    }
+
+    private fun FirebaseUser.toAuthUser(): AuthUser {
+        return AuthUser(
+            uid = uid,
+            email = email ?: displayName ?: "User",
+            displayName = displayName,
+            isEmailVerified = isEmailVerified,
+            photoUrl = photoUrl?.toString()
+        )
     }
 
     suspend fun refreshUserState(forceReload: Boolean = false): AuthUser? = withContext(Dispatchers.IO) {
@@ -66,12 +64,7 @@ class AuthRepository(
                     } catch (_: Exception) {
                     }
                 }
-                val updated = AuthUser(
-                    uid = user.uid,
-                    email = user.email ?: "User",
-                    displayName = user.displayName,
-                    isEmailVerified = user.isEmailVerified
-                )
+                val updated = user.toAuthUser()
                 _currentUserFlow.value = updated
                 updated
             } else {
@@ -84,13 +77,26 @@ class AuthRepository(
     }
 
     fun getCurrentUser(): AuthUser? {
-        return firebaseAuth.currentUser?.let {
-            AuthUser(
-                uid = it.uid,
-                email = it.email ?: "User",
-                displayName = it.displayName,
-                isEmailVerified = it.isEmailVerified
-            )
+        return firebaseAuth.currentUser?.toAuthUser()
+    }
+
+    suspend fun signInWithGoogle(idToken: String): Result<AuthUser> = withContext(Dispatchers.IO) {
+        try {
+            if (idToken.isBlank()) {
+                return@withContext Result.failure(IllegalArgumentException("Invalid Google token."))
+            }
+            val credential = GoogleAuthProvider.getCredential(idToken, null)
+            val authResult = firebaseAuth.signInWithCredential(credential).await()
+            val user = authResult.user
+            if (user != null) {
+                val authUser = user.toAuthUser()
+                _currentUserFlow.value = authUser
+                Result.success(authUser)
+            } else {
+                Result.failure(IllegalStateException("Google Sign-In failed. No user returned."))
+            }
+        } catch (e: Exception) {
+            Result.failure(mapAuthException(e))
         }
     }
 

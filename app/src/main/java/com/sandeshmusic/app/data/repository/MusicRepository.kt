@@ -10,6 +10,7 @@ import com.sandeshmusic.app.data.local.AppDatabase
 import com.sandeshmusic.app.data.local.CachedSongEntity
 import com.sandeshmusic.app.data.local.FavoriteEntity
 import com.sandeshmusic.app.data.local.RecentPlayEntity
+import com.sandeshmusic.app.data.local.UserAudioManager
 import com.sandeshmusic.app.data.model.Song
 import com.sandeshmusic.app.data.offline.OfflineMusicManager
 import com.sandeshmusic.app.data.remote.MusicApi
@@ -34,7 +35,8 @@ class MusicRepository(
     private val database: AppDatabase,
     private val authRepository: AuthRepository,
     private val firestoreSyncManager: FirestoreSyncManager,
-    private val offlineMusicManager: OfflineMusicManager
+    private val offlineMusicManager: OfflineMusicManager,
+    private val userAudioManager: UserAudioManager
 ) {
     companion object {
         private const val TAG = "MusicRepository"
@@ -49,6 +51,9 @@ class MusicRepository(
     val cachedSongsFlow: Flow<List<Song>> = songDao.getCachedSongsFlow().map { entities ->
         entities.map { it.toSong().withResolvedCovers() }
     }
+
+    val userAudioSongsFlow: Flow<List<Song>> = userAudioManager.userAudioSongsFlow
+    val totalUserAudioBytesFlow: Flow<Long> = userAudioManager.totalUserAudioBytesFlow
 
     val favoritesFlow: Flow<Set<String>> = songDao.getFavoritesFlow().map { entities ->
         entities.map { it.songId }.toSet()
@@ -223,5 +228,17 @@ class MusicRepository(
 
     suspend fun clearRecentPlays() = withContext(Dispatchers.IO) {
         songDao.clearRecentPlays()
+    }
+
+    suspend fun importUserAudio(
+        uri: android.net.Uri,
+        customTitle: String? = null,
+        customArtist: String? = null
+    ): Result<Song> {
+        return userAudioManager.importAudioUri(uri, customTitle, customArtist)
+    }
+
+    suspend fun deleteUserAudio(id: String): Boolean {
+        return userAudioManager.deleteAudioTrack(id)
     }
 }

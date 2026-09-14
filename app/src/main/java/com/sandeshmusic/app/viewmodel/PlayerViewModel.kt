@@ -54,6 +54,14 @@ class PlayerViewModel(
         playerController.addToQueue(song)
     }
 
+    fun setVolumeBoost(percent: Int) {
+        playerController.setVolumeBoost(percent)
+    }
+
+    fun setBassBoost(percent: Int) {
+        playerController.setBassBoost(percent)
+    }
+
     fun expandNowPlaying() {
         _isNowPlayingExpanded.value = true
     }

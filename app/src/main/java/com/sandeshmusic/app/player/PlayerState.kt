@@ -14,6 +14,8 @@ data class PlayerState(
     val repeatMode: Int = Player.REPEAT_MODE_OFF,
     val queue: List<Song> = emptyList(),
     val currentIndex: Int = -1,
+    val volumeBoostPercent: Int = 100,
+    val bassBoostPercent: Int = 0,
     val userErrorMessage: String? = null
 ) {
     val progress: Float

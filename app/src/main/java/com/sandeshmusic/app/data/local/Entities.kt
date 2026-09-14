@@ -86,3 +86,30 @@ data class DownloadedSongEntity(
     }
 }
 
+@Entity(tableName = "user_audio_tracks")
+data class UserAudioEntity(
+    @PrimaryKey val id: String,
+    val title: String,
+    val artist: String,
+    val album: String?,
+    val localFilePath: String,
+    val fileSize: Long,
+    val durationMs: Long,
+    val coverFilePath: String?,
+    val originalFileName: String,
+    val addedAt: Long = System.currentTimeMillis()
+) {
+    fun toSong(): Song = Song(
+        id = id,
+        title = title,
+        artist = artist,
+        album = album,
+        audioUrl = localFilePath,
+        coverUrl = coverFilePath,
+        localPath = localFilePath,
+        isDownloaded = true
+    )
+}
+
+
+

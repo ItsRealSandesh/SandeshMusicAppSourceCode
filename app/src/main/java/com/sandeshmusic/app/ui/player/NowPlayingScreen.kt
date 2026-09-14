@@ -12,6 +12,7 @@ import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
@@ -21,6 +22,7 @@ import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Bolt
 import androidx.compose.material.icons.filled.DownloadDone
 import androidx.compose.material.icons.filled.Equalizer
 import androidx.compose.material.icons.filled.Favorite
@@ -36,6 +38,7 @@ import androidx.compose.material.icons.filled.RepeatOne
 import androidx.compose.material.icons.filled.Shuffle
 import androidx.compose.material.icons.filled.SkipNext
 import androidx.compose.material.icons.filled.SkipPrevious
+import androidx.compose.material.icons.filled.VolumeUp
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FilledIconButton
@@ -77,9 +80,8 @@ import com.example.R
 import com.sandeshmusic.app.data.model.Song
 import com.sandeshmusic.app.player.PlayerState
 import com.sandeshmusic.app.ui.components.SongRowItem
+import com.sandeshmusic.app.ui.components.VolumeBoosterBottomSheet
 import com.sandeshmusic.app.ui.theme.CoralPrimary
-import com.sandeshmusic.app.ui.theme.DarkBackground
-import com.sandeshmusic.app.ui.theme.DarkSurfaceVariant
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -98,6 +100,8 @@ fun NowPlayingScreen(
     onDownloadClick: (Song) -> Unit = {},
     onMenuClick: (Song) -> Unit,
     onPlayFromQueue: (Song, List<Song>) -> Unit,
+    onSetVolumeBoost: (Int) -> Unit = {},
+    onSetBassBoost: (Int) -> Unit = {},
     modifier: Modifier = Modifier
 ) {
     val song = playerState.currentSong ?: return
@@ -108,6 +112,9 @@ fun NowPlayingScreen(
 
     var showQueueSheet by remember { mutableStateOf(false) }
     val queueSheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
+
+    var showBoosterSheet by remember { mutableStateOf(false) }
+    val boosterSheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
 
     val currentSliderValue = if (isDraggingSeek) {
         dragProgress
@@ -121,99 +128,112 @@ fun NowPlayingScreen(
         playerState.formattedPosition
     }
 
-    Box(
+    val surfaceColor = MaterialTheme.colorScheme.surface
+    val backgroundColor = MaterialTheme.colorScheme.background
+
+    Surface(
         modifier = modifier
             .fillMaxSize()
-            .background(
-                Brush.verticalGradient(
-                    listOf(
-                        Color(0xFF261838),
-                        DarkBackground,
-                        DarkBackground
-                    )
-                )
-            )
-            .statusBarsPadding()
-            .padding(horizontal = 24.dp)
-            .testTag("now_playing_screen")
+            .testTag("now_playing_screen"),
+        color = backgroundColor
     ) {
-        Column(
-            modifier = Modifier.fillMaxSize(),
-            horizontalAlignment = Alignment.CenterHorizontally
-        ) {
-            // Top App Bar
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(top = 8.dp, bottom = 12.dp),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                IconButton(
-                    onClick = onCollapse,
-                    modifier = Modifier.testTag("now_playing_collapse_btn")
-                ) {
-                    Icon(
-                        imageVector = Icons.Default.KeyboardArrowDown,
-                        contentDescription = "Collapse player",
-                        tint = MaterialTheme.colorScheme.onSurface,
-                        modifier = Modifier.size(32.dp)
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .background(
+                    Brush.verticalGradient(
+                        colors = listOf(
+                            MaterialTheme.colorScheme.surfaceVariant,
+                            surfaceColor,
+                            backgroundColor
+                        )
                     )
-                }
-
-                Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                    Text(
-                        text = "PLAYING FROM LIBRARY",
-                        style = MaterialTheme.typography.labelSmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        fontWeight = FontWeight.Bold,
-                        letterSpacing = 1.2.sp
-                    )
-                    Text(
-                        text = "Sandesh Music",
-                        style = MaterialTheme.typography.labelMedium,
-                        color = CoralPrimary,
-                        fontWeight = FontWeight.SemiBold
-                    )
-                }
-
-                IconButton(
-                    onClick = { onMenuClick(song) },
-                    modifier = Modifier.testTag("now_playing_menu_btn")
-                ) {
-                    Icon(
-                        imageVector = Icons.Default.MoreVert,
-                        contentDescription = "Options",
-                        tint = MaterialTheme.colorScheme.onSurface
-                    )
-                }
-            }
-
-            Spacer(modifier = Modifier.weight(0.5f))
-
-            // Large Square Cover Image
-            Box(
-                modifier = Modifier
-                    .fillMaxWidth(0.88f)
-                    .aspectRatio(1f)
-                    .shadow(24.dp, RoundedCornerShape(24.dp), spotColor = CoralPrimary.copy(alpha = 0.35f))
-                    .clip(RoundedCornerShape(24.dp))
-                    .background(MaterialTheme.colorScheme.surfaceVariant)
-            ) {
-                AsyncImage(
-                    model = ImageRequest.Builder(context)
-                        .data(song.coverUrl?.takeIf { it.isNotBlank() } ?: R.drawable.ic_default_cover)
-                        .crossfade(true)
-                        .error(R.drawable.ic_default_cover)
-                        .placeholder(R.drawable.ic_default_cover)
-                        .build(),
-                    contentDescription = "${song.title} artwork",
-                    modifier = Modifier.fillMaxSize(),
-                    contentScale = ContentScale.Crop
                 )
-            }
+        ) {
+            Column(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .statusBarsPadding()
+                    .navigationBarsPadding()
+                    .padding(horizontal = 24.dp),
+                horizontalAlignment = Alignment.CenterHorizontally
+            ) {
+                // Top App Bar
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(top = 8.dp, bottom = 8.dp),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    IconButton(
+                        onClick = onCollapse,
+                        modifier = Modifier.testTag("now_playing_collapse_btn")
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.KeyboardArrowDown,
+                            contentDescription = "Collapse player",
+                            tint = MaterialTheme.colorScheme.onSurface,
+                            modifier = Modifier.size(32.dp)
+                        )
+                    }
 
-            Spacer(modifier = Modifier.weight(0.5f))
+                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                        Text(
+                            text = "PLAYING FROM LIBRARY",
+                            style = MaterialTheme.typography.labelSmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            fontWeight = FontWeight.Bold,
+                            letterSpacing = 1.2.sp
+                        )
+                        Text(
+                            text = "Sandesh Music",
+                            style = MaterialTheme.typography.labelMedium,
+                            color = CoralPrimary,
+                            fontWeight = FontWeight.SemiBold
+                        )
+                    }
+
+                    IconButton(
+                        onClick = { onMenuClick(song) },
+                        modifier = Modifier.testTag("now_playing_menu_btn")
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.MoreVert,
+                            contentDescription = "Options",
+                            tint = MaterialTheme.colorScheme.onSurface
+                        )
+                    }
+                }
+
+                Spacer(modifier = Modifier.weight(0.5f))
+
+                // Cover Image Container (Clean, focused 1:1 artwork card with subtle glow)
+                Surface(
+                    shape = RoundedCornerShape(24.dp),
+                    color = MaterialTheme.colorScheme.surfaceVariant,
+                    shadowElevation = 16.dp,
+                    tonalElevation = 6.dp,
+                    modifier = Modifier
+                        .fillMaxWidth(0.85f)
+                        .aspectRatio(1f)
+                        .clip(RoundedCornerShape(24.dp))
+                        .testTag("now_playing_cover_art")
+                ) {
+                    AsyncImage(
+                        model = ImageRequest.Builder(context)
+                            .data(song.coverUrl?.takeIf { it.isNotBlank() } ?: R.drawable.ic_default_cover)
+                            .crossfade(true)
+                            .error(R.drawable.ic_default_cover)
+                            .placeholder(R.drawable.ic_default_cover)
+                            .build(),
+                        contentDescription = "${song.title} artwork",
+                        modifier = Modifier.fillMaxSize(),
+                        contentScale = ContentScale.Crop
+                    )
+                }
+
+                Spacer(modifier = Modifier.weight(0.5f))
 
             // Title & Artist + Favorite Heart
             Row(
@@ -398,7 +418,7 @@ fun NowPlayingScreen(
 
             Spacer(modifier = Modifier.height(20.dp))
 
-            // Bottom Actions (Download & Queue Sheet Trigger)
+            // Bottom Actions (Download, Volume Booster, and Queue Sheet Trigger)
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -418,6 +438,36 @@ fun NowPlayingScreen(
                     )
                 }
 
+                // Volume Booster Trigger Button
+                val isBoostActive = playerState.volumeBoostPercent > 100 || playerState.bassBoostPercent > 0
+                Surface(
+                    shape = RoundedCornerShape(20.dp),
+                    color = if (isBoostActive) CoralPrimary.copy(alpha = 0.18f) else MaterialTheme.colorScheme.surfaceVariant,
+                    modifier = Modifier
+                        .clip(RoundedCornerShape(20.dp))
+                        .clickable { showBoosterSheet = true }
+                        .testTag("now_playing_booster_btn")
+                ) {
+                    Row(
+                        modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.Bolt,
+                            contentDescription = "Volume booster",
+                            tint = if (isBoostActive) CoralPrimary else MaterialTheme.colorScheme.onSurfaceVariant,
+                            modifier = Modifier.size(20.dp)
+                        )
+                        Spacer(modifier = Modifier.width(6.dp))
+                        Text(
+                            text = if (playerState.volumeBoostPercent > 100) "${playerState.volumeBoostPercent}% BOOST" else "BOOSTER",
+                            style = MaterialTheme.typography.labelMedium,
+                            fontWeight = if (isBoostActive) FontWeight.ExtraBold else FontWeight.SemiBold,
+                            color = if (isBoostActive) CoralPrimary else MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+                }
+
                 IconButton(
                     onClick = { showQueueSheet = true },
                     modifier = Modifier.testTag("now_playing_queue_btn")
@@ -431,6 +481,19 @@ fun NowPlayingScreen(
                 }
             }
         }
+    }
+}
+
+    // Volume Booster Bottom Sheet
+    if (showBoosterSheet) {
+        VolumeBoosterBottomSheet(
+            boostPercent = playerState.volumeBoostPercent,
+            bassBoostPercent = playerState.bassBoostPercent,
+            onSetVolumeBoost = onSetVolumeBoost,
+            onSetBassBoost = onSetBassBoost,
+            sheetState = boosterSheetState,
+            onDismiss = { showBoosterSheet = false }
+        )
     }
 
     // Queue Bottom Sheet

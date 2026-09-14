@@ -6,6 +6,8 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.aspectRatio
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
@@ -53,6 +55,7 @@ fun SongMenuBottomSheet(
     isFavorite: Boolean,
     isDownloaded: Boolean = false,
     isDownloading: Boolean = false,
+    isUserAudio: Boolean = false,
     sheetState: SheetState,
     onDismiss: () -> Unit,
     onPlay: () -> Unit,
@@ -60,6 +63,7 @@ fun SongMenuBottomSheet(
     onAddToQueue: () -> Unit,
     onToggleFavorite: () -> Unit,
     onToggleDownload: () -> Unit = {},
+    onDeleteUserAudio: () -> Unit = {},
     onShowSongInfo: () -> Unit
 ) {
     val context = LocalContext.current
@@ -86,7 +90,8 @@ fun SongMenuBottomSheet(
             ) {
                 Box(
                     modifier = Modifier
-                        .size(52.dp)
+                        .width(68.dp)
+                        .aspectRatio(16f / 9f)
                         .clip(RoundedCornerShape(8.dp))
                         .background(MaterialTheme.colorScheme.surface)
                 ) {
@@ -98,7 +103,7 @@ fun SongMenuBottomSheet(
                             .placeholder(R.drawable.ic_default_cover)
                             .build(),
                         contentDescription = "Cover art",
-                        modifier = Modifier.size(52.dp),
+                        modifier = Modifier.fillMaxSize(),
                         contentScale = ContentScale.Crop
                     )
                 }
@@ -168,19 +173,31 @@ fun SongMenuBottomSheet(
                 }
             )
 
-            MenuActionItem(
-                icon = if (isDownloaded) Icons.Default.FileDownloadDone else Icons.Default.Download,
-                title = when {
-                    isDownloading -> "Downloading to Device..."
-                    isDownloaded -> "Delete from Device"
-                    else -> "Download to Device"
-                },
-                iconTint = if (isDownloaded) CoralPrimary else MaterialTheme.colorScheme.onSurface,
-                onClick = {
-                    onToggleDownload()
-                    onDismiss()
-                }
-            )
+            if (isUserAudio) {
+                MenuActionItem(
+                    icon = Icons.Default.DeleteOutline,
+                    title = "Delete from My Audio",
+                    iconTint = MaterialTheme.colorScheme.error,
+                    onClick = {
+                        onDeleteUserAudio()
+                        onDismiss()
+                    }
+                )
+            } else {
+                MenuActionItem(
+                    icon = if (isDownloaded) Icons.Default.FileDownloadDone else Icons.Default.Download,
+                    title = when {
+                        isDownloading -> "Downloading to Device..."
+                        isDownloaded -> "Delete from Device"
+                        else -> "Download to Device"
+                    },
+                    iconTint = if (isDownloaded) CoralPrimary else MaterialTheme.colorScheme.onSurface,
+                    onClick = {
+                        onToggleDownload()
+                        onDismiss()
+                    }
+                )
+            }
 
             MenuActionItem(
                 icon = Icons.Default.Info,

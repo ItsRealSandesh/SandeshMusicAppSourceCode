@@ -2,4 +2,5 @@
     <string name="app_name">Sandesh Music</string>
     <string name="playback_channel_name">Music Playback</string>
     <string name="playback_channel_description">Controls and notifications for Sandesh Music background playback</string>
+    <string name="default_web_client_id" translatable="false">882494299211-umma7eb5thaljqknpf3810cp0l2144b1.apps.googleusercontent.com</string>
 </resources>

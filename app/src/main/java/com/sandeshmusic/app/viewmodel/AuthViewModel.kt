@@ -1,12 +1,15 @@
 package com.sandeshmusic.app.viewmodel
 
+import android.content.Context
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
 import com.sandeshmusic.app.data.auth.AuthRepository
 import com.sandeshmusic.app.data.auth.AuthUser
+import com.sandeshmusic.app.data.auth.GoogleAuthManager
 import com.sandeshmusic.app.data.firestore.SyncState
 import com.sandeshmusic.app.data.repository.MusicRepository
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
@@ -16,7 +19,8 @@ import kotlinx.coroutines.launch
 
 class AuthViewModel(
     private val authRepository: AuthRepository,
-    private val musicRepository: MusicRepository
+    private val musicRepository: MusicRepository,
+    private val googleAuthManager: GoogleAuthManager? = null
 ) : ViewModel() {
 
     val currentUser: StateFlow<AuthUser?> = authRepository.currentUserFlow
@@ -199,6 +203,47 @@ class AuthViewModel(
         }
     }
 
+    fun signInWithGoogle(context: Context, onSuccess: () -> Unit = {}) {
+        viewModelScope.launch {
+            _isLoading.value = true
+            _errorMessage.value = null
+            _successMessage.value = null
+            val authManager = googleAuthManager ?: GoogleAuthManager(context.applicationContext)
+            val tokenResult = authManager.retrieveGoogleIdToken(context)
+            tokenResult.fold(
+                onSuccess = { idToken ->
+                    val authResult = authRepository.signInWithGoogle(idToken)
+                    _isLoading.value = false
+                    authResult.fold(
+                        onSuccess = { user ->
+                            _errorMessage.value = null
+                            _successMessage.value = "Welcome back, ${user.displayName ?: user.email}!"
+                            viewModelScope.launch {
+                                try {
+                                    musicRepository.syncFavoritesWithCloud()
+                                } catch (_: Exception) {
+                                }
+                            }
+                            onSuccess()
+                        },
+                        onFailure = { error ->
+                            _errorMessage.value = error.message ?: "Google Sign-In failed with Firebase."
+                        }
+                    )
+                },
+                onFailure = { error ->
+                    _isLoading.value = false
+                    val msg = error.message ?: "Google Sign-In was not completed."
+                    if (error !is CancellationException && !msg.contains("cancelled", ignoreCase = true)) {
+                        _errorMessage.value = msg
+                    } else {
+                        _errorMessage.value = "Sign-In was dismissed. You can try again or use email login."
+                    }
+                }
+            )
+        }
+    }
+
     fun signOut() {
         authRepository.signOut()
         _email.value = ""
@@ -215,12 +260,13 @@ class AuthViewModel(
 
     class Factory(
         private val authRepository: AuthRepository,
-        private val musicRepository: MusicRepository
+        private val musicRepository: MusicRepository,
+        private val googleAuthManager: GoogleAuthManager? = null
     ) : ViewModelProvider.Factory {
         @Suppress("UNCHECKED_CAST")
         override fun <T : ViewModel> create(modelClass: Class<T>): T {
             if (modelClass.isAssignableFrom(AuthViewModel::class.java)) {
-                return AuthViewModel(authRepository, musicRepository) as T
+                return AuthViewModel(authRepository, musicRepository, googleAuthManager) as T
             }
             throw IllegalArgumentException("Unknown ViewModel class ${modelClass.name}")
         }

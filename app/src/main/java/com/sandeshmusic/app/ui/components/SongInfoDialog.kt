@@ -5,6 +5,7 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
@@ -76,13 +77,15 @@ fun SongInfoDialog(
                             contentDescription = "Cover art",
                             contentScale = ContentScale.Crop,
                             modifier = Modifier
-                                .size(56.dp)
+                                .width(68.dp)
+                                .aspectRatio(16f / 9f)
                                 .clip(RoundedCornerShape(8.dp))
                         )
                     } else {
                         Column(
                             modifier = Modifier
-                                .size(56.dp)
+                                .width(68.dp)
+                                .aspectRatio(16f / 9f)
                                 .clip(RoundedCornerShape(8.dp))
                                 .background(MaterialTheme.colorScheme.surfaceVariant),
                             horizontalAlignment = Alignment.CenterHorizontally,

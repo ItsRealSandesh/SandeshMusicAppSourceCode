@@ -27,6 +27,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.testTag
 import com.sandeshmusic.app.data.model.Song
 import com.sandeshmusic.app.ui.auth.AuthBottomSheet
+import com.sandeshmusic.app.data.preferences.ThemeMode
 import com.sandeshmusic.app.ui.auth.AuthGateScreen
 import com.sandeshmusic.app.ui.components.DeveloperSupportDialog
 import com.sandeshmusic.app.ui.components.MiniPlayer
@@ -34,13 +35,16 @@ import com.sandeshmusic.app.ui.components.NavigationDestination
 import com.sandeshmusic.app.ui.components.SandeshBottomNavigation
 import com.sandeshmusic.app.ui.components.SongInfoDialog
 import com.sandeshmusic.app.ui.components.SongMenuBottomSheet
+import com.sandeshmusic.app.ui.components.ThemeSelectionDialog
 import com.sandeshmusic.app.ui.home.HomeScreen
 import com.sandeshmusic.app.ui.library.LibraryScreen
+import com.sandeshmusic.app.ui.myaudio.MyAudioScreen
 import com.sandeshmusic.app.ui.player.NowPlayingScreen
 import com.sandeshmusic.app.ui.search.SearchScreen
 import com.sandeshmusic.app.viewmodel.AuthViewModel
 import com.sandeshmusic.app.viewmodel.MusicViewModel
 import com.sandeshmusic.app.viewmodel.PlayerViewModel
+import com.sandeshmusic.app.viewmodel.ThemeViewModel
 import kotlinx.coroutines.launch
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -48,8 +52,12 @@ import kotlinx.coroutines.launch
 fun AppNavigation(
     musicViewModel: MusicViewModel,
     playerViewModel: PlayerViewModel,
-    authViewModel: AuthViewModel
+    authViewModel: AuthViewModel,
+    themeViewModel: ThemeViewModel
 ) {
+    val themeMode by themeViewModel.themeMode.collectAsState()
+    var showThemeDialog by remember { mutableStateOf(false) }
+
     val uiState by musicViewModel.uiState.collectAsState()
     val isRefreshing by musicViewModel.isRefreshing.collectAsState()
     val searchQuery by musicViewModel.searchQuery.collectAsState()
@@ -60,6 +68,8 @@ fun AppNavigation(
     val recentPlays by musicViewModel.recentPlays.collectAsState()
     val downloadedSongs by musicViewModel.downloadedSongs.collectAsState()
     val totalDownloadedBytes by musicViewModel.totalDownloadedBytes.collectAsState()
+    val userAudioSongs by musicViewModel.userAudioSongs.collectAsState()
+    val totalUserAudioBytes by musicViewModel.totalUserAudioBytes.collectAsState()
 
     val currentUser by authViewModel.currentUser.collectAsState()
     var showAuthSheet by remember { mutableStateOf(false) }
@@ -142,6 +152,8 @@ fun AppNavigation(
                             favoriteSongs = favoriteSongs,
                             playerState = playerState,
                             currentUser = currentUser,
+                            themeMode = themeMode,
+                            onThemeToggleClick = { showThemeDialog = true },
                             onRefresh = { musicViewModel.fetchSongs() },
                             onAccountClick = { showAuthSheet = true },
                             onDeveloperSupportClick = { showDeveloperSupportDialog = true },
@@ -169,6 +181,11 @@ fun AppNavigation(
                             filteredSongs = filteredSongs,
                             allSongs = cachedSongs,
                             playerState = playerState,
+                            currentUser = currentUser,
+                            themeMode = themeMode,
+                            onThemeToggleClick = { showThemeDialog = true },
+                            onAccountClick = { showAuthSheet = true },
+                            onDeveloperSupportClick = { showDeveloperSupportDialog = true },
                             onQueryChange = { musicViewModel.updateSearchQuery(it) },
                             onSongClick = { song, list ->
                                 playerViewModel.playSong(song, list)
@@ -179,14 +196,52 @@ fun AppNavigation(
                         )
                     }
 
+                    NavigationDestination.MY_AUDIO -> {
+                        MyAudioScreen(
+                            userAudioSongs = userAudioSongs,
+                            totalAudioBytes = totalUserAudioBytes,
+                            playerState = playerState,
+                            currentUser = currentUser,
+                            themeMode = themeMode,
+                            onThemeToggleClick = { showThemeDialog = true },
+                            onAccountClick = { showAuthSheet = true },
+                            onDeveloperSupportClick = { showDeveloperSupportDialog = true },
+                            onSongClick = { song, list ->
+                                playerViewModel.playSong(song, list)
+                            },
+                            onSongMenuClick = { song ->
+                                selectedMenuSong = song
+                            },
+                            onImportAudio = { uri, title, artist, callback ->
+                                musicViewModel.importUserAudio(uri, title, artist, callback)
+                            },
+                            onDeleteAudio = { songId ->
+                                musicViewModel.deleteUserAudio(songId)
+                            },
+                            onShufflePlay = { songs ->
+                                val shuffled = songs.shuffled()
+                                shuffled.firstOrNull()?.let { first ->
+                                    playerViewModel.playSong(first, shuffled)
+                                    if (!playerState.shuffleModeEnabled) {
+                                        playerViewModel.toggleShuffle()
+                                    }
+                                }
+                            }
+                        )
+                    }
+
                     NavigationDestination.LIBRARY -> {
                         LibraryScreen(
                             favoriteSongs = favoriteSongs,
                             recentPlays = recentPlays,
                             downloadedSongs = downloadedSongs,
+                            userAudioSongs = userAudioSongs,
                             totalDownloadedBytes = totalDownloadedBytes,
+                            totalAudioBytes = totalUserAudioBytes,
                             playerState = playerState,
                             currentUser = currentUser,
+                            themeMode = themeMode,
+                            onThemeToggleClick = { showThemeDialog = true },
                             onAccountClick = { showAuthSheet = true },
                             onDeveloperSupportClick = { showDeveloperSupportDialog = true },
                             onSongClick = { song, list ->
@@ -199,7 +254,8 @@ fun AppNavigation(
                                 musicViewModel.deleteDownload(songId)
                             },
                             onClearHistory = { musicViewModel.clearRecentPlays() },
-                            onExploreClick = { currentDestination = NavigationDestination.HOME }
+                            onExploreClick = { currentDestination = NavigationDestination.HOME },
+                            onNavigateToMyAudio = { currentDestination = NavigationDestination.MY_AUDIO }
                         )
                     }
                 }
@@ -243,7 +299,9 @@ fun AppNavigation(
                     onMenuClick = { song -> selectedMenuSong = song },
                     onPlayFromQueue = { song, queue ->
                         playerViewModel.playSong(song, queue)
-                    }
+                    },
+                    onSetVolumeBoost = { boost -> playerViewModel.setVolumeBoost(boost) },
+                    onSetBassBoost = { bass -> playerViewModel.setBassBoost(bass) }
                 )
             }
         }
@@ -252,10 +310,12 @@ fun AppNavigation(
         selectedMenuSong?.let { song ->
             val isFav = favorites.contains(song.id)
             val isDownloaded = downloadedSongs.any { it.id == song.id }
+            val isUserAudio = userAudioSongs.any { it.id == song.id }
             SongMenuBottomSheet(
                 song = song,
                 isFavorite = isFav,
                 isDownloaded = isDownloaded,
+                isUserAudio = isUserAudio,
                 sheetState = songMenuSheetState,
                 onDismiss = { selectedMenuSong = null },
                 onPlay = {
@@ -289,6 +349,13 @@ fun AppNavigation(
                         }
                     }
                 },
+                onDeleteUserAudio = {
+                    musicViewModel.deleteUserAudio(song.id) {
+                        scope.launch {
+                            snackbarHostState.showSnackbar("Removed \"${song.title}\" from My Audio")
+                        }
+                    }
+                },
                 onShowSongInfo = {
                     infoDialogSong = song
                 }
@@ -307,10 +374,24 @@ fun AppNavigation(
         if (showAuthSheet) {
             AuthBottomSheet(
                 authViewModel = authViewModel,
+                themeMode = themeMode,
+                onThemeToggleClick = { showThemeDialog = true },
                 onDismiss = { showAuthSheet = false },
                 onDeveloperSupportClick = {
                     showDeveloperSupportDialog = true
                 }
+            )
+        }
+
+        // Theme Selection Dialog (Light / Dark / Follow System)
+        if (showThemeDialog) {
+            ThemeSelectionDialog(
+                currentThemeMode = themeMode,
+                onThemeSelect = { selectedMode ->
+                    themeViewModel.setThemeMode(selectedMode)
+                    showThemeDialog = false
+                },
+                onDismiss = { showThemeDialog = false }
             )
         }
 

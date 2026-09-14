@@ -24,16 +24,36 @@ data class Song(
 ) {
     fun withResolvedCovers(): Song {
         val resolvedCover = resolveSongCoverUrl(this.coverUrl, this.id)
-        return this.copy(coverUrl = resolvedCover)
+        val resolvedAudio = resolveSongAudioUrl(this.audioUrl, this.id)
+        return this.copy(coverUrl = resolvedCover, audioUrl = resolvedAudio)
     }
 
     companion object {
+        fun resolveSongAudioUrl(url: String?, id: String): String {
+            if (url.isNullOrBlank()) {
+                val num = id.trim().toIntOrNull()
+                return if (num != null) {
+                    "https://song.codewithsandesh.com/music/song$num.mp3"
+                } else {
+                    "https://song.codewithsandesh.com/music/song1.mp3"
+                }
+            }
+
+            var clean = url.trim()
+            if (!clean.startsWith("http://") && !clean.startsWith("https://") && !clean.startsWith("file://") && !clean.startsWith("content://")) {
+                val rel = clean.removePrefix("/")
+                clean = "https://song.codewithsandesh.com/$rel"
+            }
+
+            return clean
+        }
+
         fun resolveSongCoverUrl(url: String?, id: String): String? {
             if (url.isNullOrBlank()) {
                 val num = id.trim().toIntOrNull()
                 return if (num != null) {
                     val padded = if (num < 10) String.format("%02d", num) else num.toString()
-                    "https://raw.githubusercontent.com/ItsRealSandesh/SandeshMusic/main/covers/song$padded.png"
+                    "https://song.codewithsandesh.com/covers/song$padded.png"
                 } else {
                     null
                 }
@@ -42,7 +62,7 @@ data class Song(
             var clean = url.trim()
             if (!clean.startsWith("http://") && !clean.startsWith("https://")) {
                 val rel = clean.removePrefix("/")
-                clean = "https://raw.githubusercontent.com/ItsRealSandesh/SandeshMusic/main/$rel"
+                clean = "https://song.codewithsandesh.com/$rel"
             }
 
             // Normalizes song1.png / song1.jpg to song01.png to match repository asset

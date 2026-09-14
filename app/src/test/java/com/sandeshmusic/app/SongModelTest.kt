@@ -22,11 +22,11 @@ class SongModelTest {
             [
               {
                 "id": "1",
-                "title": "Song 1",
-                "artist": "Sandesh Music",
+                "title": "75 Ka Chini 75 Ka Paua",
+                "artist": "Pravesh Premi",
                 "album": "Single",
-                "audioUrl": "https://raw.githubusercontent.com/ItsRealSandesh/SandeshMusic/main/music/song1.mp3",
-                "coverUrl": "https://raw.githubusercontent.com/ItsRealSandesh/SandeshMusic/main/covers/song1.jpg"
+                "audioUrl": "https://song.codewithsandesh.com/music/song1.mp3",
+                "coverUrl": "https://song.codewithsandesh.com/covers/song01.png"
               }
             ]
         """.trimIndent()
@@ -35,8 +35,8 @@ class SongModelTest {
         assertEquals(1, songs.size)
         val first = songs.first()
         assertEquals("1", first.id)
-        assertEquals("Song 1", first.title)
-        assertEquals("Sandesh Music", first.artist)
+        assertEquals("75 Ka Chini 75 Ka Paua", first.title)
+        assertEquals("Pravesh Premi", first.artist)
         assertEquals("Single", first.album)
         assertTrue(first.audioUrl.endsWith("song1.mp3"))
         assertNotNull(first.coverUrl)
@@ -47,23 +47,23 @@ class SongModelTest {
         val song1 = Song(
             id = "1",
             title = "Test",
-            coverUrl = "https://raw.githubusercontent.com/ItsRealSandesh/SandeshMusic/main/covers/song1.png"
+            coverUrl = "https://song.codewithsandesh.com/covers/song1.png"
         ).withResolvedCovers()
-        assertEquals("https://raw.githubusercontent.com/ItsRealSandesh/SandeshMusic/main/covers/song01.png", song1.coverUrl)
+        assertEquals("https://song.codewithsandesh.com/covers/song01.png", song1.coverUrl)
 
         val songJpg = Song(
             id = "1",
             title = "Test",
-            coverUrl = "https://raw.githubusercontent.com/ItsRealSandesh/SandeshMusic/main/covers/song1.jpg"
+            coverUrl = "https://song.codewithsandesh.com/covers/song1.jpg"
         ).withResolvedCovers()
-        assertEquals("https://raw.githubusercontent.com/ItsRealSandesh/SandeshMusic/main/covers/song01.png", songJpg.coverUrl)
+        assertEquals("https://song.codewithsandesh.com/covers/song01.png", songJpg.coverUrl)
 
         val relativeSong = Song(
             id = "1",
             title = "Test",
             coverUrl = "covers/song01.png"
         ).withResolvedCovers()
-        assertEquals("https://raw.githubusercontent.com/ItsRealSandesh/SandeshMusic/main/covers/song01.png", relativeSong.coverUrl)
+        assertEquals("https://song.codewithsandesh.com/covers/song01.png", relativeSong.coverUrl)
     }
 
     @Test
@@ -103,5 +103,38 @@ class SongModelTest {
         assertEquals(5, syncResult.totalCount)
         assertEquals(2, syncResult.addedToLocal.size)
         assertEquals(1, syncResult.uploadedToCloud.size)
+    }
+
+    @Test
+    fun testPlayerStateVolumeBoost() {
+        val defaultState = PlayerState()
+        assertEquals(100, defaultState.volumeBoostPercent)
+        assertEquals(0, defaultState.bassBoostPercent)
+
+        val boostedState = defaultState.copy(volumeBoostPercent = 175, bassBoostPercent = 50)
+        assertEquals(175, boostedState.volumeBoostPercent)
+        assertEquals(50, boostedState.bassBoostPercent)
+    }
+
+    @Test
+    fun testSongSortOrders() {
+        val s1 = Song(id = "1", title = "Zebra Track", artist = "Bravo")
+        val s2 = Song(id = "2", title = "Alpha Track", artist = "Zulu")
+        val s3 = Song(id = "3", title = "Middle Track", artist = "Alpha")
+        val list = listOf(s1, s2, s3)
+
+        val byTitle = list.sortedBy { it.title.lowercase() }
+        assertEquals("Alpha Track", byTitle[0].title)
+        assertEquals("Middle Track", byTitle[1].title)
+        assertEquals("Zebra Track", byTitle[2].title)
+
+        val byArtist = list.sortedBy { it.artist.lowercase() }
+        assertEquals("Alpha", byArtist[0].artist)
+        assertEquals("Bravo", byArtist[1].artist)
+        assertEquals("Zulu", byArtist[2].artist)
+
+        val shuffled = list.shuffled()
+        assertEquals(3, shuffled.size)
+        assertTrue(shuffled.containsAll(list))
     }
 }

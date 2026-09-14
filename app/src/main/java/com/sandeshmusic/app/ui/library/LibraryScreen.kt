@@ -18,12 +18,16 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.AccountCircle
+import androidx.compose.material.icons.filled.AudioFile
+import androidx.compose.material.icons.filled.BrightnessAuto
+import androidx.compose.material.icons.filled.DarkMode
 import androidx.compose.material.icons.filled.DeleteOutline
 import androidx.compose.material.icons.filled.DeleteSweep
 import androidx.compose.material.icons.filled.DownloadDone
 import androidx.compose.material.icons.filled.Favorite
 import androidx.compose.material.icons.filled.FileDownload
 import androidx.compose.material.icons.filled.History
+import androidx.compose.material.icons.filled.LightMode
 import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.SupportAgent
 import androidx.compose.material3.Button
@@ -53,6 +57,7 @@ import androidx.compose.ui.unit.dp
 import com.sandeshmusic.app.data.auth.AuthUser
 import com.sandeshmusic.app.data.model.Song
 import com.sandeshmusic.app.data.offline.OfflineMusicManager
+import com.sandeshmusic.app.data.preferences.ThemeMode
 import com.sandeshmusic.app.player.PlayerState
 import com.sandeshmusic.app.ui.components.SongRowItem
 import com.sandeshmusic.app.ui.theme.CoralPrimary
@@ -63,9 +68,13 @@ fun LibraryScreen(
     favoriteSongs: List<Song>,
     recentPlays: List<Song>,
     downloadedSongs: List<Song> = emptyList(),
+    userAudioSongs: List<Song> = emptyList(),
     totalDownloadedBytes: Long = 0L,
+    totalAudioBytes: Long = 0L,
     playerState: PlayerState,
     currentUser: AuthUser? = null,
+    themeMode: ThemeMode = ThemeMode.DARK,
+    onThemeToggleClick: () -> Unit = {},
     onAccountClick: () -> Unit = {},
     onDeveloperSupportClick: () -> Unit = {},
     onSongClick: (Song, List<Song>) -> Unit,
@@ -73,12 +82,14 @@ fun LibraryScreen(
     onDeleteDownload: (String) -> Unit = {},
     onClearHistory: () -> Unit,
     onExploreClick: () -> Unit,
+    onNavigateToMyAudio: () -> Unit = {},
     modifier: Modifier = Modifier
 ) {
     var selectedTabIndex by remember { mutableIntStateOf(0) }
     val tabs = listOf(
         "Favourites (${favoriteSongs.size})",
         "Downloads (${downloadedSongs.size})",
+        "My Audio (${userAudioSongs.size})",
         "History (${recentPlays.size})"
     )
 
@@ -102,6 +113,22 @@ fun LibraryScreen(
             )
 
             Row(verticalAlignment = Alignment.CenterVertically) {
+                IconButton(
+                    onClick = onThemeToggleClick,
+                    modifier = Modifier.testTag("library_theme_toggle_btn")
+                ) {
+                    Icon(
+                        imageVector = when (themeMode) {
+                            ThemeMode.LIGHT -> Icons.Default.LightMode
+                            ThemeMode.DARK -> Icons.Default.DarkMode
+                            ThemeMode.SYSTEM -> Icons.Default.BrightnessAuto
+                        },
+                        contentDescription = "Switch Theme",
+                        tint = CoralPrimary,
+                        modifier = Modifier.size(24.dp)
+                    )
+                }
+
                 IconButton(
                     onClick = onDeveloperSupportClick,
                     modifier = Modifier.testTag("library_developer_support_btn")
@@ -362,6 +389,122 @@ fun LibraryScreen(
             }
 
             2 -> {
+                // My Audio (Imported local audio files) Tab
+                if (userAudioSongs.isEmpty()) {
+                    Box(
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .padding(24.dp),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Column(
+                            horizontalAlignment = Alignment.CenterHorizontally,
+                            verticalArrangement = Arrangement.Center
+                        ) {
+                            Surface(
+                                shape = CircleShape,
+                                color = MaterialTheme.colorScheme.surfaceVariant,
+                                modifier = Modifier.size(72.dp)
+                            ) {
+                                Box(contentAlignment = Alignment.Center) {
+                                    Icon(
+                                        imageVector = Icons.Default.AudioFile,
+                                        contentDescription = null,
+                                        tint = CoralPrimary,
+                                        modifier = Modifier.size(36.dp)
+                                    )
+                                }
+                            }
+                            Spacer(modifier = Modifier.height(16.dp))
+                            Text(
+                                text = "No personal audio imported",
+                                style = MaterialTheme.typography.titleLarge,
+                                fontWeight = FontWeight.Bold
+                            )
+                            Spacer(modifier = Modifier.height(6.dp))
+                            Text(
+                                text = "Import and play your own MP3, WAV, FLAC, and AAC files directly from your device storage.",
+                                style = MaterialTheme.typography.bodyMedium,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                textAlign = androidx.compose.ui.text.style.TextAlign.Center
+                            )
+                            Spacer(modifier = Modifier.height(20.dp))
+                            Button(
+                                onClick = onNavigateToMyAudio,
+                                colors = ButtonDefaults.buttonColors(containerColor = CoralPrimary),
+                                modifier = Modifier.testTag("lib_open_my_audio_btn")
+                            ) {
+                                Text("Go to My Audio")
+                            }
+                        }
+                    }
+                } else {
+                    LazyColumn(
+                        modifier = Modifier.fillMaxSize(),
+                        contentPadding = PaddingValues(horizontal = 12.dp, vertical = 8.dp)
+                    ) {
+                        item {
+                            Surface(
+                                shape = RoundedCornerShape(12.dp),
+                                color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f),
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(horizontal = 4.dp, vertical = 6.dp)
+                            ) {
+                                Row(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .padding(horizontal = 14.dp, vertical = 10.dp),
+                                    horizontalArrangement = Arrangement.SpaceBetween,
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    Row(verticalAlignment = Alignment.CenterVertically) {
+                                        Icon(
+                                            imageVector = Icons.Default.AudioFile,
+                                            contentDescription = null,
+                                            tint = CoralPrimary,
+                                            modifier = Modifier.size(20.dp)
+                                        )
+                                        Spacer(modifier = Modifier.width(8.dp))
+                                        Text(
+                                            text = "Personal Tracks • ${OfflineMusicManager.formatFileSize(totalAudioBytes)}",
+                                            style = MaterialTheme.typography.labelLarge,
+                                            fontWeight = FontWeight.SemiBold,
+                                            color = MaterialTheme.colorScheme.onSurface
+                                        )
+                                    }
+
+                                    FilledTonalButton(
+                                        onClick = { onSongClick(userAudioSongs.first(), userAudioSongs) },
+                                        shape = RoundedCornerShape(8.dp)
+                                    ) {
+                                        Icon(
+                                            imageVector = Icons.Default.PlayArrow,
+                                            contentDescription = null,
+                                            modifier = Modifier.size(16.dp)
+                                        )
+                                        Spacer(modifier = Modifier.width(4.dp))
+                                        Text("Play All")
+                                    }
+                                }
+                            }
+                        }
+
+                        items(userAudioSongs, key = { "lib_user_audio_${it.id}" }) { song ->
+                            val isCurrent = playerState.currentSong?.id == song.id
+                            SongRowItem(
+                                song = song,
+                                isPlaying = isCurrent && playerState.isPlaying,
+                                isCurrent = isCurrent,
+                                onClick = { onSongClick(song, userAudioSongs) },
+                                onMenuClick = { onSongMenuClick(song) }
+                            )
+                        }
+                    }
+                }
+            }
+
+            3 -> {
                 // Listening History Tab
                 if (recentPlays.isEmpty()) {
                     Box(

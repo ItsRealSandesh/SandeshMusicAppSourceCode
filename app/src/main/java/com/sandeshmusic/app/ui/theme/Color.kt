@@ -7,7 +7,13 @@ val DarkSurface = Color(0xFF151421)
 val DarkSurfaceVariant = Color(0xFF1E1C2E)
 val DarkSurfaceContainer = Color(0xFF252338)
 
+val LightBackground = Color(0xFFF8F7FC)
+val LightSurface = Color(0xFFFFFFFF)
+val LightSurfaceVariant = Color(0xFFEDEBF3)
+val LightSurfaceContainer = Color(0xFFE3E0EC)
+
 val CoralPrimary = Color(0xFFFF5E3A)
+val CoralLight = Color(0xFFFF8A65)
 val MagentaSecondary = Color(0xFFFF4081)
 val VioletTertiary = Color(0xFF8C52FF)
 
@@ -15,5 +21,11 @@ val TextPrimary = Color(0xFFF6F5FA)
 val TextSecondary = Color(0xFFA5A2B8)
 val TextTertiary = Color(0xFF6E6B80)
 
+val LightTextPrimary = Color(0xFF191724)
+val LightTextSecondary = Color(0xFF5D586F)
+val LightTextTertiary = Color(0xFF8E89A3)
+
 val BorderSubtle = Color(0x22FFFFFF)
+val LightBorderSubtle = Color(0x1F000000)
 val ErrorColor = Color(0xFFFF5252)
+

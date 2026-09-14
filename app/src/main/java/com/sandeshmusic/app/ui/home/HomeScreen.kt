@@ -21,16 +21,25 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.AccountCircle
+import androidx.compose.material.icons.filled.Casino
 import androidx.compose.material.icons.filled.CloudOff
+import androidx.compose.material.icons.filled.BrightnessAuto
+import androidx.compose.material.icons.filled.DarkMode
+import androidx.compose.material.icons.filled.LightMode
 import androidx.compose.material.icons.filled.MusicNote
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.Shuffle
+import androidx.compose.material.icons.filled.SortByAlpha
 import androidx.compose.material.icons.filled.SupportAgent
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FilledTonalButton
+import androidx.compose.material3.FilterChip
+import androidx.compose.material3.FilterChipDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -38,7 +47,10 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -49,6 +61,7 @@ import androidx.compose.ui.unit.dp
 import com.sandeshmusic.app.data.auth.AuthUser
 import com.sandeshmusic.app.data.model.Song
 import com.sandeshmusic.app.player.PlayerState
+import com.sandeshmusic.app.data.preferences.ThemeMode
 import com.sandeshmusic.app.ui.components.SongCardHorizontal
 import com.sandeshmusic.app.ui.components.SongRowItem
 import com.sandeshmusic.app.ui.theme.CoralPrimary
@@ -64,6 +77,8 @@ fun HomeScreen(
     favoriteSongs: List<Song>,
     playerState: PlayerState,
     currentUser: AuthUser? = null,
+    themeMode: ThemeMode = ThemeMode.DARK,
+    onThemeToggleClick: () -> Unit = {},
     onRefresh: () -> Unit,
     onAccountClick: () -> Unit = {},
     onDeveloperSupportClick: () -> Unit = {},
@@ -168,9 +183,21 @@ fun HomeScreen(
             }
 
             is MusicUiState.Success -> {
-                val songs = uiState.songs
+                val rawSongs = uiState.songs
+                var sortMode by remember { mutableStateOf<SongSortOrder>(SongSortOrder.RANDOM) }
+                var randomSeed by remember { mutableStateOf(0) }
 
-                if (songs.isEmpty()) {
+                // Display songs randomized by default so the same song doesn't always appear at the top
+                val displaySongs = remember(rawSongs, sortMode, randomSeed) {
+                    when (sortMode) {
+                        SongSortOrder.RANDOM -> rawSongs.shuffled()
+                        SongSortOrder.ORIGINAL -> rawSongs
+                        SongSortOrder.TITLE -> rawSongs.sortedBy { it.title.lowercase() }
+                        SongSortOrder.ARTIST -> rawSongs.sortedBy { it.artist.lowercase() }
+                    }
+                }
+
+                if (rawSongs.isEmpty()) {
                     Box(
                         modifier = Modifier
                             .fillMaxSize()
@@ -204,7 +231,7 @@ fun HomeScreen(
                             )
                             Spacer(modifier = Modifier.height(6.dp))
                             Text(
-                                text = "Add songs to songs.json on GitHub or tap refresh to check for updates.",
+                                text = "Add songs to songs.json or tap refresh to check for updates.",
                                 style = MaterialTheme.typography.bodyMedium,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                                 modifier = Modifier.padding(horizontal = 24.dp)
@@ -253,6 +280,22 @@ fun HomeScreen(
                                     }
 
                                     Row(verticalAlignment = Alignment.CenterVertically) {
+                                        IconButton(
+                                            onClick = onThemeToggleClick,
+                                            modifier = Modifier.testTag("home_theme_toggle_btn")
+                                        ) {
+                                            Icon(
+                                                imageVector = when (themeMode) {
+                                                    ThemeMode.LIGHT -> Icons.Default.LightMode
+                                                    ThemeMode.DARK -> Icons.Default.DarkMode
+                                                    ThemeMode.SYSTEM -> Icons.Default.BrightnessAuto
+                                                },
+                                                contentDescription = "Switch Theme",
+                                                tint = CoralPrimary,
+                                                modifier = Modifier.size(24.dp)
+                                            )
+                                        }
+
                                         IconButton(
                                             onClick = onDeveloperSupportClick,
                                             modifier = Modifier.testTag("home_developer_support_btn")
@@ -394,55 +437,120 @@ fun HomeScreen(
                             }
                         }
 
-                        // All Songs Header with Shuffle button
+                        // All Songs Header with Shuffle & Order controls
                         item {
-                            Row(
+                            var showSortMenu by remember { mutableStateOf(false) }
+
+                            Column(
                                 modifier = Modifier
                                     .fillMaxWidth()
-                                    .padding(horizontal = 20.dp, vertical = 8.dp),
-                                horizontalArrangement = Arrangement.SpaceBetween,
-                                verticalAlignment = Alignment.CenterVertically
+                                    .padding(horizontal = 20.dp, vertical = 8.dp)
                             ) {
-                                Column {
-                                    Text(
-                                        text = "All Songs",
-                                        style = MaterialTheme.typography.titleLarge,
-                                        fontWeight = FontWeight.Bold
-                                    )
-                                    Text(
-                                        text = "${songs.size} ${if (songs.size == 1) "track" else "tracks"}",
-                                        style = MaterialTheme.typography.labelSmall,
-                                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                                    )
-                                }
-
-                                FilledTonalButton(
-                                    onClick = { onShuffleAll(songs) },
-                                    colors = ButtonDefaults.filledTonalButtonColors(
-                                        containerColor = MaterialTheme.colorScheme.surfaceVariant,
-                                        contentColor = CoralPrimary
-                                    ),
-                                    modifier = Modifier.testTag("shuffle_all_button")
+                                Row(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    horizontalArrangement = Arrangement.SpaceBetween,
+                                    verticalAlignment = Alignment.CenterVertically
                                 ) {
-                                    Icon(
-                                        imageVector = Icons.Default.Shuffle,
-                                        contentDescription = "Shuffle",
-                                        modifier = Modifier.size(18.dp)
-                                    )
-                                    Spacer(modifier = Modifier.width(6.dp))
-                                    Text("Shuffle")
+                                    Column {
+                                        Text(
+                                            text = "All Songs",
+                                            style = MaterialTheme.typography.titleLarge,
+                                            fontWeight = FontWeight.Bold
+                                        )
+                                        Text(
+                                            text = "${displaySongs.size} ${if (displaySongs.size == 1) "track" else "tracks"}",
+                                            style = MaterialTheme.typography.labelSmall,
+                                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                                        )
+                                    }
+
+                                    Row(
+                                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                                        verticalAlignment = Alignment.CenterVertically
+                                    ) {
+                                        // Randomize / Reshuffle order button
+                                        IconButton(
+                                            onClick = {
+                                                sortMode = SongSortOrder.RANDOM
+                                                randomSeed++
+                                            },
+                                            modifier = Modifier.testTag("reshuffle_order_button")
+                                        ) {
+                                            Icon(
+                                                imageVector = Icons.Default.Casino,
+                                                contentDescription = "Randomize order",
+                                                tint = if (sortMode == SongSortOrder.RANDOM) CoralPrimary else MaterialTheme.colorScheme.onSurfaceVariant
+                                            )
+                                        }
+
+                                        // Sort menu button
+                                        Box {
+                                            IconButton(
+                                                onClick = { showSortMenu = true },
+                                                modifier = Modifier.testTag("sort_menu_button")
+                                            ) {
+                                                Icon(
+                                                    imageVector = Icons.Default.SortByAlpha,
+                                                    contentDescription = "Sort order",
+                                                    tint = MaterialTheme.colorScheme.onSurfaceVariant
+                                                )
+                                            }
+
+                                            DropdownMenu(
+                                                expanded = showSortMenu,
+                                                onDismissRequest = { showSortMenu = false }
+                                            ) {
+                                                SongSortOrder.entries.forEach { order ->
+                                                    DropdownMenuItem(
+                                                        text = {
+                                                            Text(
+                                                                text = order.label,
+                                                                color = if (sortMode == order) CoralPrimary else MaterialTheme.colorScheme.onSurface,
+                                                                fontWeight = if (sortMode == order) FontWeight.Bold else FontWeight.Normal
+                                                            )
+                                                        },
+                                                        onClick = {
+                                                            if (order == SongSortOrder.RANDOM) {
+                                                                randomSeed++
+                                                            }
+                                                            sortMode = order
+                                                            showSortMenu = false
+                                                        }
+                                                    )
+                                                }
+                                            }
+                                        }
+
+                                        // Quick Shuffle & Play button
+                                        FilledTonalButton(
+                                            onClick = { onShuffleAll(displaySongs) },
+                                            colors = ButtonDefaults.filledTonalButtonColors(
+                                                containerColor = MaterialTheme.colorScheme.surfaceVariant,
+                                                contentColor = CoralPrimary
+                                            ),
+                                            modifier = Modifier.testTag("shuffle_all_button")
+                                        ) {
+                                            Icon(
+                                                imageVector = Icons.Default.Shuffle,
+                                                contentDescription = "Shuffle and Play",
+                                                modifier = Modifier.size(18.dp)
+                                            )
+                                            Spacer(modifier = Modifier.width(6.dp))
+                                            Text("Shuffle")
+                                        }
+                                    }
                                 }
                             }
                         }
 
                         // Vertically scrolling song list
-                        items(songs, key = { it.id }) { song ->
+                        items(displaySongs, key = { it.id }) { song ->
                             val isCurrent = playerState.currentSong?.id == song.id
                             SongRowItem(
                                 song = song,
                                 isPlaying = isCurrent && playerState.isPlaying,
                                 isCurrent = isCurrent,
-                                onClick = { onSongClick(song, songs) },
+                                onClick = { onSongClick(song, displaySongs) },
                                 onMenuClick = { onSongMenuClick(song) },
                                 modifier = Modifier.padding(horizontal = 8.dp)
                             )

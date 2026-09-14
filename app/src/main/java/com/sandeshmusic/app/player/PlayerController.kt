@@ -2,6 +2,8 @@ package com.sandeshmusic.app.player
 
 import android.content.ComponentName
 import android.content.Context
+import android.os.Bundle
+import androidx.media3.session.SessionCommand
 import androidx.core.content.ContextCompat
 import androidx.core.net.toUri
 import androidx.media3.common.MediaItem
@@ -33,10 +35,20 @@ class PlayerController(
     private var mediaController: MediaController? = null
     private var tickerJob: Job? = null
 
-    private val _playerState = MutableStateFlow(PlayerState())
+    private val prefs by lazy {
+        context.getSharedPreferences("player_audio_settings", Context.MODE_PRIVATE)
+    }
+
+    private val _playerState = MutableStateFlow(
+        PlayerState(
+            volumeBoostPercent = prefs.getInt("key_volume_boost", 100),
+            bassBoostPercent = prefs.getInt("key_bass_boost", 0)
+        )
+    )
     val playerState: StateFlow<PlayerState> = _playerState.asStateFlow()
 
     private var currentSongMap = mutableMapOf<String, Song>()
+    private var pendingAction: ((MediaController) -> Unit)? = null
 
     private val playerListener = object : Player.Listener {
         override fun onMediaItemTransition(mediaItem: MediaItem?, reason: Int) {
@@ -128,6 +140,9 @@ class PlayerController(
                 this.mediaController = controller
                 controller.addListener(playerListener)
                 syncStateFromController(controller)
+                applyAudioSettingsToController(controller)
+                pendingAction?.invoke(controller)
+                pendingAction = null
             } catch (e: Exception) {
                 _playerState.update {
                     it.copy(userErrorMessage = "Failed to connect to audio service: ${e.message}")
@@ -164,26 +179,34 @@ class PlayerController(
     }
 
     fun playSong(song: Song, playlist: List<Song> = listOf(song)) {
-        val controller = mediaController ?: return
-        playlist.forEach { currentSongMap[it.id] = it }
+        val action: (MediaController) -> Unit = { controller ->
+            playlist.forEach { currentSongMap[it.id] = it }
 
-        val targetIndex = playlist.indexOfFirst { it.id == song.id }.coerceAtLeast(0)
-        val mediaItems = playlist.map { it.toMediaItem() }
+            val targetIndex = playlist.indexOfFirst { it.id == song.id }.coerceAtLeast(0)
+            val mediaItems = playlist.map { it.toMediaItem() }
 
-        controller.setMediaItems(mediaItems, targetIndex, 0L)
-        controller.prepare()
-        controller.play()
+            controller.setMediaItems(mediaItems, targetIndex, 0L)
+            controller.prepare()
+            controller.play()
 
-        _playerState.update {
-            it.copy(
-                currentSong = song,
-                queue = playlist,
-                currentIndex = targetIndex,
-                isPlaying = true,
-                userErrorMessage = null
-            )
+            _playerState.update {
+                it.copy(
+                    currentSong = song,
+                    queue = playlist,
+                    currentIndex = targetIndex,
+                    isPlaying = true,
+                    userErrorMessage = null
+                )
+            }
+            onSongPlayed(song)
         }
-        onSongPlayed(song)
+
+        val controller = mediaController
+        if (controller != null) {
+            action(controller)
+        } else {
+            pendingAction = action
+        }
     }
 
     fun playPause() {
@@ -268,6 +291,53 @@ class PlayerController(
         _playerState.update { it.copy(userErrorMessage = null) }
     }
 
+    fun setVolumeBoost(percent: Int) {
+        val clamped = percent.coerceIn(100, 250)
+        _playerState.update { it.copy(volumeBoostPercent = clamped) }
+        prefs.edit().putInt("key_volume_boost", clamped).apply()
+        sendVolumeBoostCommand(clamped)
+    }
+
+    fun setBassBoost(percent: Int) {
+        val clamped = percent.coerceIn(0, 100)
+        _playerState.update { it.copy(bassBoostPercent = clamped) }
+        prefs.edit().putInt("key_bass_boost", clamped).apply()
+        sendBassBoostCommand(clamped)
+    }
+
+    private fun applyAudioSettingsToController(controller: MediaController) {
+        val boost = _playerState.value.volumeBoostPercent
+        val bass = _playerState.value.bassBoostPercent
+        val boostBundle = Bundle().apply { putInt(MusicService.KEY_BOOST_PERCENT, boost) }
+        controller.sendCustomCommand(
+            SessionCommand(MusicService.ACTION_SET_VOLUME_BOOST, Bundle.EMPTY),
+            boostBundle
+        )
+        val bassBundle = Bundle().apply { putInt(MusicService.KEY_BASS_STRENGTH, bass) }
+        controller.sendCustomCommand(
+            SessionCommand(MusicService.ACTION_SET_BASS_BOOST, Bundle.EMPTY),
+            bassBundle
+        )
+    }
+
+    private fun sendVolumeBoostCommand(boostPercent: Int) {
+        val controller = mediaController ?: return
+        val bundle = Bundle().apply { putInt(MusicService.KEY_BOOST_PERCENT, boostPercent) }
+        controller.sendCustomCommand(
+            SessionCommand(MusicService.ACTION_SET_VOLUME_BOOST, Bundle.EMPTY),
+            bundle
+        )
+    }
+
+    private fun sendBassBoostCommand(bassStrength: Int) {
+        val controller = mediaController ?: return
+        val bundle = Bundle().apply { putInt(MusicService.KEY_BASS_STRENGTH, bassStrength) }
+        controller.sendCustomCommand(
+            SessionCommand(MusicService.ACTION_SET_BASS_BOOST, Bundle.EMPTY),
+            bundle
+        )
+    }
+
     private fun startPositionTicker() {
         tickerJob?.cancel()
         tickerJob = scope.launch {
@@ -313,9 +383,14 @@ class PlayerController(
             ?: resolved.audioUrl.takeIf { it.isNotBlank() }?.toUri()
             ?: android.net.Uri.EMPTY
 
+        val requestMetadata = MediaItem.RequestMetadata.Builder()
+            .setMediaUri(playableUri)
+            .build()
+
         return MediaItem.Builder()
             .setMediaId(resolved.id)
             .setUri(playableUri)
+            .setRequestMetadata(requestMetadata)
             .setMediaMetadata(metadata)
             .build()
     }

@@ -14,10 +14,16 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.layout.Row
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.AccountCircle
+import androidx.compose.material.icons.filled.BrightnessAuto
 import androidx.compose.material.icons.filled.Clear
+import androidx.compose.material.icons.filled.DarkMode
+import androidx.compose.material.icons.filled.LightMode
 import androidx.compose.material.icons.filled.MusicNote
 import androidx.compose.material.icons.filled.Search
+import androidx.compose.material.icons.filled.SupportAgent
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -28,10 +34,13 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import com.sandeshmusic.app.data.auth.AuthUser
 import com.sandeshmusic.app.data.model.Song
+import com.sandeshmusic.app.data.preferences.ThemeMode
 import com.sandeshmusic.app.player.PlayerState
 import com.sandeshmusic.app.ui.components.SongRowItem
 import com.sandeshmusic.app.ui.theme.CoralPrimary
@@ -42,6 +51,11 @@ fun SearchScreen(
     filteredSongs: List<Song>,
     allSongs: List<Song>,
     playerState: PlayerState,
+    currentUser: AuthUser? = null,
+    themeMode: ThemeMode = ThemeMode.DARK,
+    onThemeToggleClick: () -> Unit = {},
+    onAccountClick: () -> Unit = {},
+    onDeveloperSupportClick: () -> Unit = {},
     onQueryChange: (String) -> Unit,
     onSongClick: (Song, List<Song>) -> Unit,
     onSongMenuClick: (Song) -> Unit,
@@ -53,12 +67,78 @@ fun SearchScreen(
             .testTag("search_screen")
     ) {
         // Search Header
-        Text(
-            text = "Search",
-            style = MaterialTheme.typography.headlineLarge,
-            fontWeight = FontWeight.ExtraBold,
-            modifier = Modifier.padding(start = 20.dp, end = 20.dp, top = 20.dp, bottom = 12.dp)
-        )
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(start = 20.dp, end = 16.dp, top = 20.dp, bottom = 12.dp),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Text(
+                text = "Search",
+                style = MaterialTheme.typography.headlineLarge,
+                fontWeight = FontWeight.ExtraBold
+            )
+
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                IconButton(
+                    onClick = onThemeToggleClick,
+                    modifier = Modifier.testTag("search_theme_toggle_btn")
+                ) {
+                    Icon(
+                        imageVector = when (themeMode) {
+                            ThemeMode.LIGHT -> Icons.Default.LightMode
+                            ThemeMode.DARK -> Icons.Default.DarkMode
+                            ThemeMode.SYSTEM -> Icons.Default.BrightnessAuto
+                        },
+                        contentDescription = "Switch Theme",
+                        tint = CoralPrimary,
+                        modifier = Modifier.size(24.dp)
+                    )
+                }
+
+                IconButton(
+                    onClick = onDeveloperSupportClick,
+                    modifier = Modifier.testTag("search_developer_support_btn")
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.SupportAgent,
+                        contentDescription = "Developer Support",
+                        tint = CoralPrimary,
+                        modifier = Modifier.size(26.dp)
+                    )
+                }
+
+                IconButton(
+                    onClick = onAccountClick,
+                    modifier = Modifier.testTag("search_account_btn")
+                ) {
+                    if (currentUser != null) {
+                        Surface(
+                            shape = CircleShape,
+                            color = CoralPrimary,
+                            modifier = Modifier.size(34.dp)
+                        ) {
+                            Box(contentAlignment = Alignment.Center) {
+                                Text(
+                                    text = currentUser.email.firstOrNull()?.uppercaseChar()?.toString() ?: "U",
+                                    style = MaterialTheme.typography.labelLarge,
+                                    fontWeight = FontWeight.Bold,
+                                    color = Color.White
+                                )
+                            }
+                        }
+                    } else {
+                        Icon(
+                            imageVector = Icons.Default.AccountCircle,
+                            contentDescription = "Login to account",
+                            tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                            modifier = Modifier.size(28.dp)
+                        )
+                    }
+                }
+            }
+        }
 
         // Search Input Bar
         OutlinedTextField(

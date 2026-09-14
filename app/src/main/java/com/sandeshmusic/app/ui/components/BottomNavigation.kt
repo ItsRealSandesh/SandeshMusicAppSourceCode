@@ -4,9 +4,11 @@ import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.navigationBars
 import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.AudioFile
 import androidx.compose.material.icons.filled.Home
 import androidx.compose.material.icons.filled.LibraryMusic
 import androidx.compose.material.icons.filled.Search
+import androidx.compose.material.icons.outlined.AudioFile
 import androidx.compose.material.icons.outlined.Home
 import androidx.compose.material.icons.outlined.LibraryMusic
 import androidx.compose.material.icons.outlined.Search
@@ -31,6 +33,7 @@ enum class NavigationDestination(
 ) {
     HOME("Home", Icons.Filled.Home, Icons.Outlined.Home, "home"),
     SEARCH("Search", Icons.Filled.Search, Icons.Outlined.Search, "search"),
+    MY_AUDIO("My Audio", Icons.Filled.AudioFile, Icons.Outlined.AudioFile, "my_audio"),
     LIBRARY("Library", Icons.Filled.LibraryMusic, Icons.Outlined.LibraryMusic, "library")
 }
 
